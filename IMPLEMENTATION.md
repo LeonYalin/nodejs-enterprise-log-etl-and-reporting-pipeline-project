@@ -120,7 +120,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 
 ## Implementation Steps
 
-### 1. Scaffolding & config
+### 1. Scaffolding & config — DONE
 - `package.json` (ESM, `type: module`), `tsconfig.json` (strict, `moduleResolution: NodeNext`).
 - Install deps: `kafkajs @clickhouse/client zod express pino prom-client @faker-js/faker`; dev: `tsx typescript @types/node @types/express pino-pretty vitest testcontainers`.
 - npm scripts pass `--env-file=.env` to `tsx` (Node 20.6+ native env loading — no `dotenv`).
