@@ -1,0 +1,34 @@
+{
+  "name": "nodejs-enterprise-log-etl-and-reporting-pipeline-project",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "This project represents a local log ETL pipeline using Kafka and ClickHouse",
+  "author": "Leon Yalin",
+  "scripts": {
+    "up": "docker-compose up -d",
+    "down": "docker-compose down",
+    "db:init": "todo: sql init",
+    "dev:producer": "tsx --env-file=.env src/producer/index.ts",
+    "dev:consumer": "tsx --env-file=.env src/consumer/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.23.1",
+    "@faker-js/faker": "^10.5.0",
+    "express": "^5.2.1",
+    "kafkajs": "^2.2.4",
+    "pino": "^10.3.1",
+    "prom-client": "^15.1.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.1",
+    "pino-pretty": "^13.1.3",
+    "testcontainers": "^12.0.4",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
