@@ -10,6 +10,7 @@ network sockets, and database connections as scarce resources. Here are the spec
 architectural instruments and engineering methods this project uses to handle that load.
 
 **1. High-throughput buffering & batching (the consumer engine)**
+
 Making 10,000 individual database inserts every second would destroy database
 performance due to network round-trip overhead.
 *   **The Instrument:** an in-memory batch buffer (`src/consumer/batch-buffer.ts`).
@@ -21,6 +22,7 @@ performance due to network round-trip overhead.
     efficient bulk requests per second.
 
 **2. Stream backpressure (resource protection)**
+
 If ClickHouse slows down or spikes in latency, logs back up in the consumer's memory
 buffer. If the consumer keeps pulling data from Kafka blindly, it will run out of
 memory and crash with an OOM error.
@@ -32,6 +34,7 @@ memory and crash with an OOM error.
     instead of falling over.
 
 **3. Columnar aggregation at scale (the database engine)**
+
 Standard relational databases (Postgres, MySQL) struggle with massive log volumes —
 they store data in rows and build heavy indices that slow down as tables grow.
 *   **The Instrument:** ClickHouse's `MergeTree` and `AggregatingMergeTree` table engines.
@@ -43,6 +46,7 @@ they store data in rows and build heavy indices that slow down as tables grow.
     dozen pre-aggregated rows instead of the full raw log table.
 
 **4. Reducing ClickHouse insert latency**
+
 Even with batching, waiting for ClickHouse to fully merge each batch to disk before
 acknowledging it would slow down how fast the consumer can move on to its next batch —
 capping overall throughput. (Note: this isn't about the Node.js event loop being
@@ -56,6 +60,7 @@ trip takes before the consumer can proceed.)
     stalling on ClickHouse's disk I/O every cycle.
 
 **5. Graceful shutdown & zero data loss**
+
 When a pipeline is processing 10,000 rows/sec, stopping the process abruptly would trap
 thousands of records in memory — causing data loss or duplicate reprocessing.
 *   **The Instrument:** Node.js `process.on('SIGTERM')` hooks.
@@ -64,6 +69,7 @@ thousands of records in memory — causing data loss or duplicate reprocessing.
     Kafka offsets only *after* that flush succeeds, then disconnects cleanly.
 
 **6. Real-time observability (the metrics stack)**
+
 You can't tune a high-throughput system you're blind to.
 *   **The Instrument:** `prom-client` + Prometheus + Grafana.
 *   **The Method:** each process (producer, consumer, api) exposes a `/metrics`
