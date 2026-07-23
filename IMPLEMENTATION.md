@@ -128,10 +128,10 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - `src/lib/logger.ts` (pino), `src/lib/metrics.ts` (shared prom-client Registry + counters/histograms/gauges), `src/lib/kafka.ts`, `src/lib/clickhouse.ts` factories.
 
 ### 2. Domain model (`src/domain/log-event.ts`)
-- `RawLogEventSchema` (zod): `ts` (ISO string), `level` (enum), `service`, `host`, `traceId`, `statusCode`, `latencyMs`, `message`. This validates what the producer emits / consumer receives.
-- `toRow()` transform → ClickHouse row shape (`ts` DateTime64, snake_case columns). Export inferred TS types.
+- `RawLogEventSchema` (zod): `timestamp` (ISO string), `level` (enum), `service`, `host`, `traceId`, `statusCode`, `latencyMs`, `message`. This validates what the producer emits / consumer receives.
+- `toRow()` transform → ClickHouse row shape (`timestamp` DateTime64, snake_case columns). Export inferred TS types.
 
-### 3. Infra — `docker-compose.yml`
+### 3. Infra — `docker-compose.yml` — DONE
 - **Kafka** in KRaft mode (`apache/kafka` or `bitnami/kafka`, single broker, no ZooKeeper); auto-create topics off — create topics explicitly in an init step or via app admin on boot.
 - **ClickHouse** (`clickhouse/clickhouse-server`), mount `clickhouse/init/*.sql` into `/docker-entrypoint-initdb.d/` for auto-schema; expose HTTP 8123 (Play UI) + native 9000.
 - **Kafka UI** (`provectuslabs/kafka-ui` or `redpanda-console`) for topic/consumer-group inspection.
@@ -140,7 +140,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - Healthchecks + `depends_on` so ordering is sane.
 
 ### 4. ClickHouse schema (`clickhouse/init/*.sql`)
-- **Raw table** `logs`: `MergeTree`, `PARTITION BY toYYYYMMDD(ts)`, `ORDER BY (service, level, ts)`, `LowCardinality` for level/service/host, `TTL ts + INTERVAL 7 DAY` (retention demo).
+- **Raw table** `logs`: `MergeTree`, `PARTITION BY toYYYYMMDD(timestamp)`, `ORDER BY (service, level, timestamp)`, `LowCardinality` for level/service/host, `TTL timestamp + INTERVAL 7 DAY` (retention demo).
 - **Aggregate target** `logs_1m`: `AggregatingMergeTree`, `ORDER BY (minute, service, level)`, holding `count`, `errors` (status ≥ 500), `quantilesState(0.5,0.95,0.99)(latency_ms)`, `latency_sum`.
 - **Materialized View** `logs_1m_mv TO logs_1m`: `SELECT toStartOfMinute(ts) …` — incremental aggregation on every insert (the ClickHouse-idiomatic reporting pattern).
 

@@ -5,7 +5,7 @@ import { z } from "zod";
  * Validates what the producer emits and what the consumer receives
  */
 export const RawLogEventSchema = z.object({
-  ts: z.iso.datetime({ message: "Must be a valid ISO 8601 UTC timestamp" }),
+  timestamp: z.iso.datetime({ message: "Must be a valid ISO 8601 UTC timestamp" }),
   level: z.enum([ 'DEBUG', 'INFO', "WARN", "ERROR", "FATAL" ]),
   service: z.string().min(1),
   host: z.string().min(1),
@@ -22,7 +22,7 @@ export type RawLogEvent = z.infer<typeof RawLogEventSchema>;
  * Columns use snake_case and match standard ClickHouse-compatible JS types.
  */
 export interface ClickHouseLogRow {
-  ts: string; // DateTime64(3) — column name matches clickhouse/init/01_schema.sql (ORDER BY (service, level, ts))
+  timestamp: string; // DateTime64(3) — column name matches clickhouse/init/01_schema.sql (ORDER BY (service, level, timestamp))
   level: string; // LowCardinality(String)
   service: string; // LowCardinality(String)
   host: string; // LowCardinality(String)
@@ -37,7 +37,7 @@ export interface ClickHouseLogRow {
  */
 export function toRow(event: RawLogEvent): ClickHouseLogRow {
   return {
-    ts: event.ts,
+    timestamp: event.timestamp,
     level: event.level,
     service: event.service,
     host: event.host,
