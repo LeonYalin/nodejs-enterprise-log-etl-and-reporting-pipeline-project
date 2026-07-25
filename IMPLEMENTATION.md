@@ -139,7 +139,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - **Grafana** with provisioned Prometheus datasource + pipeline dashboard.
 - Healthchecks + `depends_on` so ordering is sane.
 
-### 4. ClickHouse schema (`clickhouse/init/*.sql`)
+### 4. ClickHouse schema (`clickhouse/init/*.sql`) — DONE
 - **Raw table** `logs`: `MergeTree`, `PARTITION BY toYYYYMMDD(timestamp)`, `ORDER BY (service, level, timestamp)`, `LowCardinality` for level/service/host, `TTL timestamp + INTERVAL 7 DAY` (retention demo).
 - **Aggregate target** `logs_1m`: `AggregatingMergeTree`, `ORDER BY (minute, service, level)`, holding `count`, `errors` (status ≥ 500), `quantilesState(0.5,0.95,0.99)(latency_ms)`, `latency_sum`.
 - **Materialized View** `logs_1m_mv TO logs_1m`: `SELECT toStartOfMinute(ts) …` — incremental aggregation on every insert (the ClickHouse-idiomatic reporting pattern).
