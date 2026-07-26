@@ -51,4 +51,10 @@ export const pipelineMetrics = {
     registers: [ registry ],
   }),
 
+  producerSendErrors: new client.Counter({
+    name: "pipeline_producer_send_errors_total",
+    help: "Total number of Kafka send errors encountered by the producer",
+    registers: [ registry ],
+  }),
+
 };

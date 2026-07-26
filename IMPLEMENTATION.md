@@ -144,7 +144,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - **Aggregate target** `logs_1m`: `AggregatingMergeTree`, `ORDER BY (minute, service, level)`, holding `count`, `errors` (status ≥ 500), `quantilesState(0.5,0.95,0.99)(latency_ms)`, `latency_sum`.
 - **Materialized View** `logs_1m_mv TO logs_1m`: `SELECT toStartOfMinute(ts) …` — incremental aggregation on every insert (the ClickHouse-idiomatic reporting pattern).
 
-### 5. Producer (`src/producer/index.ts`)
+### 5. Producer (`src/producer/index.ts`) — DONE
 - KafkaJS producer, **idempotent**, `acks=all`, gzip compression.
 - Generate mock logs with faker; realistic distribution (mostly INFO, some WARN/ERROR, occasional 5xx, latency spread).
 - **Rate limiter** targeting `PRODUCER_RATE` (~10k/sec): send in sub-batches (e.g. 500–1000 msgs) via `sendBatch`, throttle per tick.
