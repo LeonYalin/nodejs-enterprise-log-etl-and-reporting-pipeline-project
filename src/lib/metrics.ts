@@ -57,4 +57,11 @@ export const pipelineMetrics = {
     registers: [ registry ],
   }),
 
+  consumerLag: new client.Gauge({
+    name: "pipeline_consumer_lag_records",
+    help: "Estimated consumer lag behind partition head",
+    labelNames: [ "partition" ],
+    registers: [ registry ],
+  }),
+
 };

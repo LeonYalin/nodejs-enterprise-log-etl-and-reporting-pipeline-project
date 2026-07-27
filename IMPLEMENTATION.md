@@ -152,7 +152,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - Expose `/metrics` (produced count, send errors) via `metrics-server`.
 - Graceful shutdown on SIGINT/SIGTERM (flush + disconnect).
 
-### 6. Consumer / ETL (`src/consumer/`)
+### 6. Consumer / ETL (`src/consumer/`) — DONE
 - KafkaJS consumer, `autoCommit: false`, **`eachBatch`** (not `eachMessage`) for throughput.
 - Per message: zod-validate → valid rows into **`batch-buffer`**, invalid → **`dlq`** (publish to DLQ topic + metric), never crash on bad data.
 - **`batch-buffer.ts`**: accumulate across batches; flush when `BATCH_SIZE` reached **or** `FLUSH_INTERVAL_MS` timer fires (whichever first) → single bulk `client.insert({ format: 'JSONEachRow' })`.
