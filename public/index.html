@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline Operational Realtime Report</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --error: #f43f5e;
+    }
+
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      color: var(--accent);
+    }
+
+    select {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .num {
+      text-align: right;
+      font-family: monospace;
+    }
+
+    .err-badge {
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--error);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .loader {
+      font-size: 14px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>🚀 Log Pipeline Monitor</h1>
+    <div>
+      <label for="timeframe">Window: </label>
+      <select id="timeframe" onchange="refreshDashboard()">
+        <option value="5">Past 5 Minutes</option>
+        <option value="15" selected>Past 15 Minutes</option>
+        <option value="60">Past 1 Hour</option>
+        <option value="1440">Past 24 Hours</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Throughput Card -->
+    <div class="card">
+      <h2>In-Flight Production Throughput</h2>
+      <div id="throughput-target"><span class="loader">Loading metrics...</span></div>
+    </div>
+
+    <!-- Top Services Volume Card -->
+    <div class="card">
+      <h2>Top Traffic Volume Share</h2>
+      <div id="volume-target"><span class="loader">Loading metrics...</span></div>
+    </div>
+
+    <!-- Error Aggregation Card -->
+    <div class="card">
+      <h2>Active Failure Rates</h2>
+      <div id="errors-target"><span class="loader">Loading metrics...</span></div>
+    </div>
+
+    <!-- Latency Target Card -->
+    <div class="card">
+      <h2>Service Performance Latency (ms)</h2>
+      <div id="latency-target"><span class="loader">Loading metrics...</span></div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
+    async function fetchData(endpoint, minutes) {
+      try {
+        const response = await fetch(`/reports/${endpoint}?minutes=${minutes}`);
+        const json = await response.json();
+        return json.success ? json.data : [];
+      } catch (err) {
+        console.error(`Failed loading endpoint ${endpoint}:`, err);
+        return [];
+      }
+    }
+
+    async function refreshDashboard() {
+      const mins = document.getElementById('timeframe').value;
+
+      // 1. Throughput Table
+      const throughput = await fetchData('throughput', mins);
+      document.getElementById('throughput-target').innerHTML = throughput.length === 0 ? 'No data' : `
+        <table>
+          <thead><tr><th>Minute Window</th><th class="num">Logs Ingested</th></tr></thead>
+          <tbody>${throughput.slice(-6).reverse().map(r => `<tr><td>${new Date(r.time).toLocaleTimeString()}</td><td class="num">${Number(r.count).toLocaleString()}</td></tr>`).join('')}</tbody>
+        </table>`;
+
+      // 2. Top Volume Table
+      const volume = await fetchData('top-services', mins);
+      document.getElementById('volume-target').innerHTML = volume.length === 0 ? 'No data' : `
+        <table>
+          <thead><tr><th>Service Name</th><th class="num">Total Logs</th></tr></thead>
+          <tbody>${volume.map(r => `<tr><td><strong>${escapeHtml(r.service)}</strong></td><td class="num">${Number(r.volume).toLocaleString()}</td></tr>`).join('')}</tbody>
+        </table>`;
+
+      // 3. Error Rates Table
+      const errors = await fetchData('errors-by-service', mins);
+      document.getElementById('errors-target').innerHTML = errors.length === 0 ? '✅ 0 System Errors Reported' : `
+        <table>
+          <thead><tr><th>Service Name</th><th class="num">Failure Count</th></tr></thead>
+          <tbody>${errors.map(r => `<tr><td>${escapeHtml(r.service)}</td><td class="num"><span class="err-badge">${Number(r.error_count).toLocaleString()}</span></td></tr>`).join('')}</tbody>
+        </table>`;
+
+      // 4. Latency Table
+      const latency = await fetchData('latency-percentiles', mins);
+      document.getElementById('latency-target').innerHTML = latency.length === 0 ? 'No data' : `
+        <table>
+          <thead><tr><th>Service Name</th><th class="num">p50</th><th class="num">p90</th><th class="num">p99</th></tr></thead>
+          <tbody>${latency.map(r => `<tr><td>${escapeHtml(r.service)}</td><td class="num">${r.percentiles[0]} ms</td><td class="num">${r.percentiles[1]} ms</td><td class="num">${r.percentiles[2]} ms</td></tr>`).join('')}</tbody>
+        </table>`;
+    }
+
+    // Auto-refresh loops every 5 seconds
+    refreshDashboard();
+    setInterval(refreshDashboard, 5000);
+  </script>
+</body>
+
+</html>

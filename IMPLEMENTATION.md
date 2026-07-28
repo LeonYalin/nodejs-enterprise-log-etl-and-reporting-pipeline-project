@@ -160,7 +160,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - **Graceful shutdown**: SIGTERM → stop consuming, flush remaining buffer, commit, disconnect.
 - Metrics: consumed/inserted counters, DLQ counter, insert-duration histogram, buffer-size gauge, consumer-lag gauge (via Kafka admin `fetchOffsets`).
 
-### 7. Reporting API + dashboard (`src/api/`)
+### 7. Reporting API + dashboard (`src/api/`) — DONE
 - Express server; `routes/reports.ts` as an `express.Router`. `queries.ts` reads the **pre-aggregated** `logs_1m` using `-Merge` combinators (`quantilesMerge`) — fast, ClickHouse-idiomatic.
 - Endpoints: `GET /reports/throughput` (rows/min), `/reports/errors-by-service`, `/reports/latency-percentiles`, `/reports/top-services`. Query params for time window.
 - `express.static('public')` serves `public/index.html`: minimal dashboard that fetches the endpoints and renders simple tables/charts (vanilla JS, no framework).
