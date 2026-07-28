@@ -166,7 +166,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - `express.static('public')` serves `public/index.html`: minimal dashboard that fetches the endpoints and renders simple tables/charts (vanilla JS, no framework).
 - Expose `/metrics` and `/health`. Central error-handling middleware for clean JSON errors.
 
-### 8. Metrics wiring (Prometheus + Grafana)
+### 8. Metrics wiring (Prometheus + Grafana) — DONE
 - Each Node process exposes `/metrics` (prom-client). `prometheus.yml` scrapes all three.
 - Grafana `pipeline.json` dashboard: ingest throughput, DLQ rate, ClickHouse insert latency (p50/p95), buffer size, consumer lag.
 
