@@ -26,4 +26,5 @@ PARTITION BY toYYYYMMDD(timestamp)
 -- Index primary key: sorted from lowest cardinality to highest for binary seek speed
 ORDER BY (service, level, timestamp)
 -- Auto-delete engine data older than 7 days to manage storage footprints
-TTL timestamp + INTERVAL 7 DAY;
+-- TTL requires a Date/DateTime result, so the DateTime64 column is downcast
+TTL toDateTime(timestamp) + INTERVAL 7 DAY;

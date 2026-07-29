@@ -170,7 +170,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - Each Node process exposes `/metrics` (prom-client). `prometheus.yml` scrapes all three.
 - Grafana `pipeline.json` dashboard: ingest throughput, DLQ rate, ClickHouse insert latency (p50/p95), buffer size, consumer lag.
 
-### 9. Developer ergonomics
+### 9. Developer ergonomics — DONE
 - npm scripts: `up`/`down` (compose), `db:init` (apply SQL / verify), `dev:producer`, `dev:consumer`, `dev:api`, `dev` (all via `concurrently` or separate terminals). `Makefile` mirrors these.
 - Rewrite `README.md` into runnable quickstart: `docker compose up -d` → `npm run db:init` → start consumer → start producer → open API/dashboard/Grafana/Kafka UI.
 

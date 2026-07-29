@@ -1,4 +1,4 @@
-import { kafkaClient } from '../lib/kafka.js';
+import { kafkaClient, ensureTopics } from '../lib/kafka.js';
 import { logger } from '../lib/logger.js';
 import { pipelineMetrics } from '../lib/metrics.js';
 import { startMetricsServer } from '../lib/metrics-server.js';
@@ -57,6 +57,8 @@ async function trackLag() {
 }
 
 async function startConsumer() {
+  await ensureTopics([ config.KAFKA_TOPIC, config.KAFKA_DLQ_TOPIC ]);
+
   await consumer.connect();
   await admin.connect();
   await consumer.subscribe({ topic: config.KAFKA_TOPIC, fromBeginning: false });

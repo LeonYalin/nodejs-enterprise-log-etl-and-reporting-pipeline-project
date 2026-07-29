@@ -84,8 +84,32 @@ You can't tune a high-throughput system you're blind to.
 *   **Node libraries:** `kafkajs`, `@clickhouse/client`, `zod`, `express`, `pino`, `prom-client`, `@faker-js/faker`.
 *   **Observability:** Prometheus, Grafana, Kafka UI, ClickHouse Play.
 
+### Quickstart
+
+```bash
+cp .env.example .env        # defaults work out of the box
+npm install
+npm run up                  # starts Kafka, ClickHouse, Prometheus, Grafana, Kafka UI
+npm run db:init              # applies clickhouse/init/*.sql, verifies logs/logs_1m/logs_1m_mv
+
+npm run dev                  # producer + consumer + API together
+# — or, in separate terminals: dev:producer / dev:consumer / dev:api
+```
+
+Then open:
+
+*   **Reporting API + dashboard:** http://localhost:3000
+*   **Grafana:** http://localhost:3001 → admin/admin (auto-provisioned "Log Pipeline Overview")
+*   **Kafka UI:** http://localhost:8080
+*   **ClickHouse Play:** http://localhost:8123/play
+*   **Prometheus:** http://localhost:9090
+
+`Makefile` mirrors every `npm run` script above (`make up`, `make db-init`, `make dev`, …) if you prefer `make`.
+
+To stop: `Ctrl-C` the Node processes (drains the buffer, commits offsets, disconnects
+cleanly) and `npm run down` to stop the infra containers.
+
 ### Status
 
 Greenfield — see [IMPLEMENTATION.md](IMPLEMENTATION.md) for the full build plan and
-step-by-step progress. Quickstart commands will land here once the infra
-(`docker-compose.yml`) and dev scripts exist.
+step-by-step progress.

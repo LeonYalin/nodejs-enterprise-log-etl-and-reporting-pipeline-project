@@ -29,7 +29,7 @@ Producer rate via env (rows/sec): `PRODUCER_RATE=10000 npm run dev:producer`
 - API + reports: `http://localhost:$API_PORT` — `/reports/throughput`, `/reports/errors-by-service`, `/reports/latency-percentiles`, `/reports/top-services`
 - Dashboard: `http://localhost:$API_PORT/` (serves `public/index.html`)
 - Metrics: producer `:$PRODUCER_METRICS_PORT/metrics`, consumer `:$CONSUMER_METRICS_PORT/metrics`, api `/metrics`
-- Kafka UI: `http://localhost:8080` · ClickHouse Play: `http://localhost:8123/play` · Prometheus: `http://localhost:9090` · Grafana: `http://localhost:3000`
+- Kafka UI: `http://localhost:8080` · ClickHouse Play: `http://localhost:8123/play` · Prometheus: `http://localhost:9090` · Grafana: `http://localhost:3001`
 
 ## Shutdown
 `Ctrl-C` / SIGTERM drains the buffer, commits offsets, and disconnects — safe to stop anytime.

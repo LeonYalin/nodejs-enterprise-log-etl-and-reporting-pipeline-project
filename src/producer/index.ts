@@ -1,7 +1,7 @@
 import { CompressionTypes } from 'kafkajs';
 import { faker } from '@faker-js/faker';
 import { startMetricsServer } from '../lib/metrics-server.js';
-import { kafkaClient } from '../lib/kafka.js';
+import { kafkaClient, ensureTopics } from '../lib/kafka.js';
 import { pipelineMetrics } from '../lib/metrics.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config/index.js';
@@ -79,6 +79,8 @@ function buildTickMessages(): { value: string }[] {
  * Main producer process loop
  */
 async function startProducer() {
+  await ensureTopics([ config.KAFKA_TOPIC ]);
+
   const producer = kafkaClient.producer({
     idempotent: true,
     maxInFlightRequests: 1,

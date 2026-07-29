@@ -2,30 +2,39 @@ services:
   # --- DATA PLANE ---
 
   kafka:
-    image: bitnami/kafka:3.7.0
+    # bitnami/kafka was pulled from Docker Hub's free tier (no tags resolve anymore);
+    # apache/kafka is the image IMPLEMENTATION.md listed as the alternative.
+    image: apache/kafka:3.7.0
     container_name: log_pipeline_kafka
     ports:
       - "9092:9092"
       - "9094:9094"
     environment:
-      # KRaft settings (No Zookeeper)
-      - KAFKA_ENABLE_KRAFT=yes
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      # apache/kafka maps KAFKA_<PROPERTY> directly to server.properties keys
+      # (dots -> underscores), unlike bitnami's KAFKA_CFG_<PROPERTY> prefix.
+      - CLUSTER_ID=crSAWIL6R1SOeKxcZdh5Iw
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=controller,broker
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
       # Listeners configuration
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
       # Auto-topic creation disabled as requested
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=false
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=false
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
+      # This image defaults internal-topic replication factor to 3; with a single
+      # broker that can never be satisfied, so __consumer_offsets never gets created
+      # and every consumer group hangs on "group coordinator not available".
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
     volumes:
-      - kafka_data:/bitnami/kafka
+      - kafka_data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -33,6 +42,12 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
     container_name: log_pipeline_clickhouse
+    environment:
+      # Without this, the entrypoint restricts the "default" user to localhost-only
+      # (inside the container) whenever CLICKHOUSE_USER/PASSWORD aren't set, which
+      # blocks every app connection from the host. This keeps the base image's
+      # baked-in network-open "default" user (empty password) that .env expects.
+      - CLICKHOUSE_SKIP_USER_SETUP=1
     ports:
       - "8123:8123" # HTTP / ClickHouse Play UI
       - "9000:9000" # Native client port
@@ -80,7 +95,8 @@ services:
     image: grafana/grafana:10.4.1
     container_name: log_pipeline_grafana
     ports:
-      - "3000:3000"
+      # Host 3001 -> container 3000: host port 3000 is already used by the reporting API (API_PORT).
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
