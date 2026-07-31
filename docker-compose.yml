@@ -115,3 +115,9 @@ volumes:
     driver: local
   grafana_data:
     driver: local
+
+networks:
+  # Named explicitly (rather than the long Compose-generated default) so external
+  # containers -- e.g. the Kafka MCP server in .mcp.json -- can join it by name.
+  default:
+    name: log_pipeline_net

@@ -36,12 +36,12 @@
       "type": "stdio",
       "command": "docker",
       "args": [
-        "run", "--rm", "-i", "--add-host=host.docker.internal:host-gateway",
+        "run", "--rm", "-i", "--network=log_pipeline_net",
         "-e", "KAFKA_BROKERS", "-e", "MCP_TRANSPORT",
         "ghcr.io/tuannvm/kafka-mcp-server"
       ],
       "env": {
-        "KAFKA_BROKERS": "host.docker.internal:9094",
+        "KAFKA_BROKERS": "kafka:9092",
         "MCP_TRANSPORT": "stdio"
       }
     }
