@@ -10,5 +10,6 @@
       "Bash(npx vitest:*)",
       "Bash(curl http://localhost:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": ["clickhouse", "grafana", "kafka"]
 }

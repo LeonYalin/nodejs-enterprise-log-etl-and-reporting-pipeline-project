@@ -1,0 +1,49 @@
+{
+  "mcpServers": {
+    "clickhouse": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i", "--add-host=host.docker.internal:host-gateway",
+        "-e", "CLICKHOUSE_HOST", "-e", "CLICKHOUSE_PORT", "-e", "CLICKHOUSE_USER",
+        "-e", "CLICKHOUSE_PASSWORD", "-e", "CLICKHOUSE_DATABASE", "-e", "CLICKHOUSE_SECURE",
+        "mcp/clickhouse"
+      ],
+      "env": {
+        "CLICKHOUSE_HOST": "host.docker.internal",
+        "CLICKHOUSE_PORT": "8123",
+        "CLICKHOUSE_USER": "default",
+        "CLICKHOUSE_PASSWORD": "",
+        "CLICKHOUSE_DATABASE": "log_pipeline",
+        "CLICKHOUSE_SECURE": "false"
+      }
+    },
+    "grafana": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i", "--add-host=host.docker.internal:host-gateway",
+        "-e", "GRAFANA_URL", "-e", "GRAFANA_USERNAME", "-e", "GRAFANA_PASSWORD",
+        "grafana/mcp-grafana", "-t", "stdio"
+      ],
+      "env": {
+        "GRAFANA_URL": "http://host.docker.internal:3001",
+        "GRAFANA_USERNAME": "admin",
+        "GRAFANA_PASSWORD": "admin"
+      }
+    },
+    "kafka": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i", "--add-host=host.docker.internal:host-gateway",
+        "-e", "KAFKA_BROKERS", "-e", "MCP_TRANSPORT",
+        "ghcr.io/tuannvm/kafka-mcp-server"
+      ],
+      "env": {
+        "KAFKA_BROKERS": "host.docker.internal:9094",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}

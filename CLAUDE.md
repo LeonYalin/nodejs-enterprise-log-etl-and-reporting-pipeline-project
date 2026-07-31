@@ -25,5 +25,6 @@ Invalid messages → **DLQ topic** (never crash the consumer).
 - Operational commands (infra up/down, `db:init`, dev procs, load, endpoints) → **`run-pipeline` skill**.
 - Diagnostic & report SQL → **`clickhouse-queries` skill**.
 - End-to-end verification → **`pipeline-verifier` agent**. ClickHouse design/tuning → **`clickhouse-expert` agent**. Reviewing new TS against the streaming invariants → **`etl-code-reviewer` agent**.
+- Interactive Kafka/Grafana/ClickHouse access → MCP servers in `.mcp.json` (Docker-based, project-scoped). Tool schemas load on demand via Claude Code's tool search, so they add negligible context per turn.
 
 Don't restate commands or SQL here — those skills are the single source.

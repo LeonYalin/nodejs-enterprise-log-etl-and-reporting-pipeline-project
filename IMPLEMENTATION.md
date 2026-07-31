@@ -185,6 +185,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - **`.claude/agents/clickhouse-expert.md`** — CH schema/MV/query design subagent; defers detail to the skills + `clickhouse/init/*.sql`.
 - **`.claude/agents/pipeline-verifier.md`** — e2e verification subagent; orchestration only, invokes the two skills, zero duplicated commands/SQL.
 - **`.claude/agents/etl-code-reviewer.md`** — reviews new/changed TS against this app's streaming invariants (offset-after-insert, backpressure, event-loop safety, DLQ, shutdown, module boundaries). Enforces CLAUDE.md conventions on the tricky parts; does not restate general TS/Express style.
+- **`.mcp.json`** — Kafka/Grafana/ClickHouse MCP servers (Docker-based, project-scoped); tool schemas deferred via Claude Code's tool search, so they add negligible per-turn cost.
 
 This structure is the token-saving lesson: `CLAUDE.md` loads every turn so it stays small; heavier procedural/reference detail lives in skills that load **on demand**; agents run in isolated context and pull only the skill(s) they need.
 
