@@ -16,7 +16,8 @@ This plan builds that project from scratch as a **small but production-shaped le
 - **Claude config:** `CLAUDE.md` + `.claude/` (settings, skills, subagents), authored DRY/token-lean — context lives once, everything else points to it.
 - **Observability:** pino logs, `prom-client` metrics, Prometheus + Grafana, plus Kafka UI console + ClickHouse Play for inspection.
 - **Reliability:** zod schema validation + Dead-Letter Queue topic; backpressure (pause/resume, size+time batch flush) + graceful shutdown (drain + commit on SIGTERM).
-- **Testing:** Vitest unit tests (transform, validation, batch-buffer) + a testcontainers integration test for the ingest→query path.
+- **Code structure:** modules export `createX(deps)` factories with dependencies typed structurally; each process entrypoint is the composition root and the only place with import-time side effects (auto-start guarded by `import.meta.url`). Config is the one deliberate singleton. No DI container.
+- **Testing:** Vitest unit tests (transform, validation, batch-buffer) + a testcontainers integration test for the ingest→query path. No module mocking — inject fakes, or use real containers.
 - **Env loading:** no `dotenv` dependency — Node's built-in `--env-file=.env` in npm scripts, then zod-validated in `src/config`.
 - **Out of scope (for now):** CI workflow, ESLint. (Prettier/tsconfig included for basic hygiene.)
 
@@ -69,8 +70,9 @@ Node processes (npm scripts): producer, consumer, api — run locally against do
 .
 ├── docker-compose.yml
 ├── .env.example                      # all config keys, safe defaults
-├── package.json                      # scripts: dev:*, db:init, up, down
+├── package.json                      # scripts: dev:*, db:init, up, down, test, test:integration, typecheck
 ├── tsconfig.json                     # strict, ESM (NodeNext)
+├── vitest.config.ts                  # unit + integration projects
 ├── Makefile                          # convenience targets (up, seed, reports…)
 ├── clickhouse/
 │   ├── init/01_schema.sql            # logs MergeTree table (+ DLQ audit optional)
@@ -79,32 +81,42 @@ Node processes (npm scripts): producer, consumer, api — run locally against do
 ├── grafana/provisioning/…            # datasource + dashboard auto-provision
 │   └── dashboards/pipeline.json      # throughput, DLQ rate, insert latency, lag
 ├── public/index.html                 # minimal dashboard (fetches /reports/*)
+├── scripts/db-init.ts                # applies clickhouse/init/*.sql (thin wrapper over lib/schema-init)
+├── tests/integration/                # testcontainers suite (globalSetup, ingest, reports)
 └── src/
-    ├── config/index.ts               # env → zod-parsed typed config
+    ├── config/index.ts               # env → zod-parsed typed config; pure loadConfig(env) + singleton export
     ├── lib/
     │   ├── logger.ts                 # pino factory
     │   ├── kafka.ts                  # shared KafkaJS client factory
     │   ├── clickhouse.ts             # @clickhouse/client factory
+    │   ├── logs-repository.ts        # the only ClickHouse write (createLogsRepository)
+    │   ├── schema-init.ts            # applies clickhouse/init/*.sql; shared by db:init + integration tests
     │   ├── metrics.ts                # prom-client registry + shared metrics
     │   └── metrics-server.ts         # tiny HTTP /metrics endpoint (producer/consumer)
     ├── domain/log-event.ts           # zod schemas + TS types (raw + row)
-    ├── producer/index.ts             # high-frequency generator + rate limiter
+    ├── producer/
+    │   ├── index.ts                  # composition root: builds deps, signals, exit codes
+    │   ├── service.ts                # rate-limited send loop (createProducerService factory)
+    │   └── generator.ts              # pure mock-log generation + malformed mix + rate math
     ├── consumer/
-    │   ├── index.ts                  # eachBatch entrypoint, offset mgmt, shutdown
-    │   ├── batch-buffer.ts           # accumulate + flush on size/time
-    │   ├── transform.ts              # shape transform (raw → ClickHouse row)
-    │   └── dlq.ts                    # publish invalid messages to DLQ topic
+    │   ├── index.ts                  # composition root: builds deps, signals, exit codes
+    │   ├── service.ts                # eachBatch orchestration, offsets, backpressure
+    │   ├── batch-buffer.ts           # accumulate + flush on size/time (createBatchBuffer factory)
+    │   ├── transform.ts              # pure classify (raw → valid row | DLQ reason)
+    │   └── dlq.ts                    # publish invalid messages to DLQ topic (createDlqPublisher factory)
     └── api/
-        ├── index.ts                  # Express server + static + /metrics
-        ├── routes/reports.ts         # report endpoints (express.Router)
-        └── queries.ts                # ClickHouse report SQL (uses -Merge)
+        ├── app.ts                    # createApp(deps): static + /metrics + /health + /reports, no listen()
+        ├── index.ts                  # entrypoint: createApp + listen
+        ├── routes/reports.ts         # report endpoints (createReportsRouter factory)
+        └── queries.ts                # ClickHouse report SQL (createReportQueries factory, uses -Merge)
 ```
 
 Plus Claude Code config (already created; see Step 10):
 ```
 ├── CLAUDE.md                         # canonical project context (single source of truth)
+├── .mcp.json                         # Kafka/Grafana/ClickHouse MCP servers (Docker-based, project-scoped)
 └── .claude/
-    ├── settings.json                 # permission allowlist (fewer prompts)
+    ├── settings.json                 # permission allowlist + enabledMcpjsonServers (fewer prompts)
     ├── skills/
     │   ├── run-pipeline/SKILL.md     # operational commands (up/down, load, dev procs)
     │   └── clickhouse-queries/SKILL.md # diagnostic + report SQL reference
@@ -144,7 +156,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - **Aggregate target** `logs_1m`: `AggregatingMergeTree`, `ORDER BY (minute, service, level)`, holding `count`, `errors` (status ≥ 500), `quantilesState(0.5,0.95,0.99)(latency_ms)`, `latency_sum`.
 - **Materialized View** `logs_1m_mv TO logs_1m`: `SELECT toStartOfMinute(ts) …` — incremental aggregation on every insert (the ClickHouse-idiomatic reporting pattern).
 
-### 5. Producer (`src/producer/index.ts`) — DONE
+### 5. Producer (`src/producer/`) — DONE
 - KafkaJS producer, **idempotent**, `acks=all`, gzip compression.
 - Generate mock logs with faker; realistic distribution (mostly INFO, some WARN/ERROR, occasional 5xx, latency spread).
 - **Rate limiter** targeting `PRODUCER_RATE` (~10k/sec): send in sub-batches (e.g. 500–1000 msgs) via `sendBatch`, throttle per tick.
@@ -156,7 +168,7 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 - KafkaJS consumer, `autoCommit: false`, **`eachBatch`** (not `eachMessage`) for throughput.
 - Per message: zod-validate → valid rows into **`batch-buffer`**, invalid → **`dlq`** (publish to DLQ topic + metric), never crash on bad data.
 - **`batch-buffer.ts`**: accumulate across batches; flush when `BATCH_SIZE` reached **or** `FLUSH_INTERVAL_MS` timer fires (whichever first) → single bulk `client.insert({ format: 'JSONEachRow' })`.
-- **Backpressure**: `pause()` the partition while a flush is in-flight / buffer above high-watermark, `resume()` after; call `heartbeat()` and `resolveOffset()` progressively; `commitOffsetsIfNecessary()` only **after** a successful ClickHouse insert (at-least-once, no data loss).
+- **Backpressure**: `pause()` the partition while a flush is in-flight / buffer above high-watermark, `resume()` after; `resolveOffset()` inline per message (in-memory progress) and `heartbeat()` on a wall-clock interval; explicit `consumer.commitOffsets()` only **after** a successful ClickHouse insert, covering exactly the offsets that flush durably persisted (at-least-once, no data loss).
 - **Graceful shutdown**: SIGTERM → stop consuming, flush remaining buffer, commit, disconnect.
 - Metrics: consumed/inserted counters, DLQ counter, insert-duration histogram, buffer-size gauge, consumer-lag gauge (via Kafka admin `fetchOffsets`).
 
@@ -189,10 +201,11 @@ Single TypeScript package, three entrypoints (`producer`, `consumer`, `api`) sha
 
 This structure is the token-saving lesson: `CLAUDE.md` loads every turn so it stays small; heavier procedural/reference detail lives in skills that load **on demand**; agents run in isolated context and pull only the skill(s) they need.
 
-### 11. Tests (`vitest` + `testcontainers`)
-- **Unit** (`*.test.ts`, no infra): `domain/log-event` validation (good/malformed), `consumer/transform` (raw → row shape), `consumer/batch-buffer` (flush on size, flush on timer, drain-on-shutdown).
-- **Integration** (`testcontainers`, tagged/separate script): spin up Kafka + ClickHouse containers → produce a small fixed batch (incl. malformed) → run the consumer path → assert rows land in `logs`, the MV populates `logs_1m`, and a malformed record hit the DLQ topic. Reuses the same SQL as the `clickhouse-queries` skill (no duplication).
-- npm scripts: `test` (unit), `test:integration` (containers). Kept fast/deterministic; integration uses tiny batches, not the 10k/sec load.
+### 11. Tests (`vitest` + `testcontainers`) — DONE
+- **Unit** (99 tests, `*.test.ts` beside the source, no infra): `domain/log-event` validation + `toRow` mapping, `consumer/transform` classification branches, `consumer/batch-buffer` (flush on size, flush on timer, in-flight guard, restore-on-insert-failure, offset resolution), `consumer/dlq` (envelope, lazy connect, never throws), `producer/generator` (schema contract with the consumer, level/status distribution, malformed mix, rate math), `producer/service` (chunking, acks/compression, metrics, survives send failures), `config` validation.
+- **Integration** (18 tests, `tests/integration/`): containers boot and apply the real `clickhouse/init/*.sql` (no duplicated SQL). `ingest.test.ts` spawns the actual consumer entrypoint via `tsx` and produces a small fixed batch incl. malformed → asserts rows in `logs`, MV aggregation in `logs_1m`, `quantilesMerge` percentiles, both DLQ branches, zero consumer lag, no redelivery, and a SIGTERM drain that flushes still-buffered rows. `reports.test.ts` drives `createApp()` with supertest over seeded data.
+- Fakes are used only where a real dependency can't cooperate (failure injection, timer control); everything else runs against containers.
+- npm scripts: `test` (unit), `test:integration` (containers), `typecheck`. Integration uses tiny batches, not the 10k/sec load.
 
 ---
 
