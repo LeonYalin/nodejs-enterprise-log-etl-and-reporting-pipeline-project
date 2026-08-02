@@ -1,4 +1,4 @@
-.PHONY: up down db-init dev-producer dev-consumer dev-api dev test test-watch
+.PHONY: up down db-init dev-producer dev-consumer dev-api dev test test-watch test-integration typecheck
 
 up:
 	npm run up
@@ -26,3 +26,9 @@ test:
 
 test-watch:
 	npm run test:watch
+
+test-integration:
+	npm run test:integration
+
+typecheck:
+	npm run typecheck

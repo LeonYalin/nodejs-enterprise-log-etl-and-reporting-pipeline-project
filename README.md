@@ -1,5 +1,7 @@
 ## Enterprise Log ETL & Reporting Pipeline (Kafka + ClickHouse)
 
+![Architecture: producer → Kafka → batching consumer → ClickHouse (+ materialized view) → Express reporting API, with a dead-letter queue and a Prometheus/Grafana observability band](docs/architecture.svg)
+
 > Full build order & design → [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 ### The goal
@@ -83,6 +85,7 @@ You can't tune a high-throughput system you're blind to.
 *   **Broker/Database:** Apache Kafka (KRaft mode), ClickHouse (columnar analytical database).
 *   **Node libraries:** `kafkajs`, `@clickhouse/client`, `zod`, `express`, `pino`, `prom-client`, `@faker-js/faker`.
 *   **Observability:** Prometheus, Grafana, Kafka UI, ClickHouse Play.
+*   **Testing:** `vitest` (unit) + `testcontainers` and `supertest` (integration).
 
 ### Quickstart
 
@@ -109,7 +112,25 @@ Then open:
 To stop: `Ctrl-C` the Node processes (drains the buffer, commits offsets, disconnects
 cleanly) and `npm run down` to stop the infra containers.
 
+### Tests
+
+```bash
+npm test                     # 99 unit tests — pure logic, no infra, runs in ~300ms
+npm run test:integration     # 18 integration tests on throwaway Kafka + ClickHouse containers
+npm run typecheck            # tsc --noEmit
+```
+
+Unit tests sit beside their source as `*.test.ts`; the container-backed suite lives in
+`tests/integration/`. The integration run boots Kafka and ClickHouse, applies the real
+`clickhouse/init/*.sql`, then **spawns the actual consumer process** and asserts the whole
+path: rows in `logs`, the materialized view populating `logs_1m`, malformed messages landing
+in the DLQ, consumer lag returning to zero, and a `SIGTERM` flushing still-buffered rows.
+
+There is no module mocking anywhere — dependencies are injected, so tests either pass a
+plain fake object or run against a real container. Fakes are reserved for what a real
+dependency can't do on cue: failure injection and timer control.
+
 ### Status
 
-Greenfield — see [IMPLEMENTATION.md](IMPLEMENTATION.md) for the full build plan and
-step-by-step progress.
+Complete — all 11 build steps in [IMPLEMENTATION.md](IMPLEMENTATION.md) are done, from infra
+and schema through the ETL consumer, reporting API, Grafana dashboards, and the test suite.

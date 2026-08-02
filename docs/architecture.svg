@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 590" width="1240" height="590" role="img" aria-label="Architecture diagram: producer sends mock logs to a Kafka topic, a batching consumer validates and bulk-inserts into ClickHouse where a materialized view aggregates into logs_1m, and an Express API serves reports. Invalid messages go to a dead-letter topic. All processes expose metrics to Prometheus and Grafana.">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <style>
+    .t   { font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .h1  { font-size: 25px; font-weight: 700; fill: #0f172a; }
+    .sub { font-size: 14px; fill: #64748b; }
+    .nt  { font-size: 16px; font-weight: 700; fill: #0f172a; }
+    .nd  { font-size: 12px; fill: #475569; }
+    .lbl { font-size: 11px; fill: #64748b; font-style: italic; }
+    .bt  { font-size: 13px; font-weight: 700; fill: #334155; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+
+  <rect x="0" y="0" width="1240" height="590" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text class="t h1" x="620" y="46" text-anchor="middle">Enterprise Log ETL &amp; Reporting Pipeline</text>
+  <text class="t sub" x="620" y="72" text-anchor="middle">Kafka → ClickHouse → Express · ~10,000 events/sec on local hardware</text>
+
+  <!-- ===== main flow ===== -->
+
+  <!-- Producer -->
+  <rect x="20" y="110" width="190" height="130" rx="10" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+  <text class="t nt" x="115" y="145" text-anchor="middle">Producer</text>
+  <text class="t nd" x="115" y="172" text-anchor="middle">@faker-js/faker</text>
+  <text class="t nd" x="115" y="194" text-anchor="middle">~10k msgs/sec</text>
+  <text class="t nd" x="115" y="216" text-anchor="middle">idempotent · gzip</text>
+
+  <!-- Kafka -->
+  <rect x="272" y="110" width="190" height="130" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+  <text class="t nt" x="367" y="145" text-anchor="middle">Kafka (KRaft)</text>
+  <text class="t nd mono" x="367" y="172" text-anchor="middle">log-events</text>
+  <text class="t nd" x="367" y="194" text-anchor="middle">durable partitioned</text>
+  <text class="t nd" x="367" y="216" text-anchor="middle">commit log</text>
+
+  <!-- Consumer -->
+  <rect x="525" y="110" width="190" height="130" rx="10" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+  <text class="t nt" x="620" y="145" text-anchor="middle">Consumer / ETL</text>
+  <text class="t nd" x="620" y="172" text-anchor="middle">zod validate → transform</text>
+  <text class="t nd" x="620" y="194" text-anchor="middle">batch buffer (size/time)</text>
+  <text class="t nd" x="620" y="216" text-anchor="middle">backpressure · pause/resume</text>
+
+  <!-- ClickHouse -->
+  <rect x="777" y="110" width="190" height="130" rx="10" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text class="t nt" x="872" y="145" text-anchor="middle">ClickHouse</text>
+  <text class="t nd mono" x="872" y="172" text-anchor="middle">logs</text>
+  <text class="t nd" x="872" y="194" text-anchor="middle">↓ materialized view</text>
+  <text class="t nd mono" x="872" y="216" text-anchor="middle">logs_1m</text>
+
+  <!-- API -->
+  <rect x="1030" y="110" width="190" height="130" rx="10" fill="#e0e7ff" stroke="#6366f1" stroke-width="2"/>
+  <text class="t nt" x="1125" y="145" text-anchor="middle">Express API</text>
+  <text class="t nd mono" x="1125" y="172" text-anchor="middle">/reports/*</text>
+  <text class="t nd" x="1125" y="194" text-anchor="middle">quantilesMerge</text>
+  <text class="t nd" x="1125" y="216" text-anchor="middle">+ static dashboard</text>
+
+  <!-- flow arrows -->
+  <line x1="210" y1="175" x2="270" y2="175" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="t lbl" x="241" y="164" text-anchor="middle">sendBatch</text>
+
+  <line x1="462" y1="175" x2="523" y2="175" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="t lbl" x="493" y="164" text-anchor="middle">eachBatch</text>
+
+  <line x1="715" y1="175" x2="775" y2="175" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="t lbl" x="745" y="164" text-anchor="middle">bulk insert</text>
+
+  <line x1="967" y1="175" x2="1028" y2="175" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="t lbl" x="998" y="164" text-anchor="middle">SQL</text>
+
+  <!-- ===== DLQ branch ===== -->
+  <line x1="620" y1="240" x2="620" y2="316" stroke="#dc2626" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow-red)"/>
+  <text class="t lbl" x="634" y="284" fill="#dc2626">malformed</text>
+
+  <rect x="525" y="318" width="190" height="60" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="2"/>
+  <text class="t nt" x="620" y="343" text-anchor="middle" font-size="14">Dead-Letter Queue</text>
+  <text class="t nd mono" x="620" y="364" text-anchor="middle">log-events-dlq</text>
+
+  <!-- offset commit note -->
+  <line x1="777" y1="228" x2="717" y2="228" stroke="#16a34a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text class="t lbl" x="800" y="262" fill="#16a34a">commit offsets only</text>
+  <text class="t lbl" x="800" y="276" fill="#16a34a">after a successful insert</text>
+
+  <!-- ===== observability band ===== -->
+  <rect x="20" y="420" width="1200" height="145" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="7 5"/>
+  <text class="t bt" x="44" y="450">Observability — every process exposes /metrics</text>
+
+  <rect x="44" y="470" width="300" height="62" rx="9" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text class="t nd" x="194" y="495" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">producer · consumer · api</text>
+  <text class="t nd mono" x="194" y="516" text-anchor="middle">/metrics</text>
+
+  <line x1="344" y1="501" x2="404" y2="501" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow-slate)"/>
+
+  <rect x="406" y="470" width="190" height="62" rx="9" fill="#ffedd5" stroke="#f97316" stroke-width="2"/>
+  <text class="t nt" x="501" y="497" text-anchor="middle" font-size="15">Prometheus</text>
+  <text class="t nd" x="501" y="517" text-anchor="middle">scrapes every 5s</text>
+
+  <line x1="596" y1="501" x2="656" y2="501" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow-slate)"/>
+
+  <rect x="658" y="470" width="230" height="62" rx="9" fill="#ffe4e6" stroke="#f43f5e" stroke-width="2"/>
+  <text class="t nt" x="773" y="497" text-anchor="middle" font-size="15">Grafana</text>
+  <text class="t nd" x="773" y="517" text-anchor="middle">Log Pipeline Overview</text>
+
+  <text class="t nd" x="910" y="489" font-size="12" fill="#334155">consumer lag · insert latency (p50/p95)</text>
+  <text class="t nd" x="910" y="510" font-size="12" fill="#334155">buffer size · DLQ rate · throughput</text>
+</svg>
